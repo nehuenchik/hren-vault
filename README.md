@@ -4,6 +4,16 @@ Local, end-to-end encrypted vault for notes and secrets. Your data never leaves 
 
 > ⚠️ **Beta.** The cryptography has **not** yet passed an independent audit. Use at your own risk and keep backups.
 
+ ## Download & Install (Windows)
+
+**➡️ [Download the installer — HREN-vault-setup.exe](https://github.com/nehuenchik/hren-vault/releases/latest)**
+
+1. Download **`HREN-vault-setup.exe`** from the [latest release](https://github.com/nehuenchik/hren-vault/releases/latest) (in the **Assets** section).
+2. Double-click the downloaded file.
+3. **If Windows shows a blue "Windows protected your PC" screen** — this is expected for a new app that isn't code-signed yet. Click **More info**, then **Run anyway**.
+4. Follow the wizard: choose language → accept the license → install. A desktop shortcut is created and the app starts.
+
+No terminal, no Rust, and no administrator rights are required. Windows only for now.
 ## What it is
 
 H.R.E.N. vault stores your notes and secrets in a single encrypted file (`*.svault`). Everything is encrypted locally with your password; without it the file is just noise. An optional **Account Key** adds a true second factor and recovery / other-device access.
