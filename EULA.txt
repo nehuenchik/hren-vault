@@ -1,0 +1,34 @@
+H.R.E.N. vault (beta) — Лицензионное соглашение / License Agreement
+====================================================================
+
+РУССКИЙ
+
+1. Это БЕТА-версия. Программа предоставляется «КАК ЕСТЬ», без каких-либо
+   гарантий. Криптография пока не проходила независимый аудит.
+2. Все данные шифруются и хранятся ЛОКАЛЬНО на вашем устройстве. Программа
+   не отправляет ваши данные на сервера разработчика.
+3. Ответственность за сохранность пароля и Account Key лежит на вас.
+   При их утере восстановить данные НЕВОЗМОЖНО. Делайте резервные копии.
+4. Программа распространяется под лицензией GNU AGPL-3.0. Устанавливая её,
+   вы принимаете условия этой лицензии.
+5. Разработчик не несёт ответственности за потерю данных или иной ущерб,
+   связанный с использованием бета-версии.
+
+Устанавливая программу, вы подтверждаете согласие с этими условиями.
+
+--------------------------------------------------------------------
+
+ENGLISH
+
+1. This is a BETA release. The software is provided "AS IS", without any
+   warranty. The cryptography has not yet had an independent audit.
+2. All data is encrypted and stored LOCALLY on your device. The program
+   does not send your data to the developer's servers.
+3. You are responsible for keeping your password and Account Key. If lost,
+   data recovery is IMPOSSIBLE. Keep backups.
+4. The software is licensed under the GNU AGPL-3.0. By installing it you
+   accept the terms of that license.
+5. The developer is not liable for data loss or other damages arising from
+   the use of this beta.
+
+By installing, you agree to these terms.

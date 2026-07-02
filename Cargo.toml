@@ -1,0 +1,52 @@
+[package]
+name = "securevault"
+version = "0.1.0"
+edition = "2021"
+description = "SecureVault crypto core — E2E зашифрованное локальное хранилище (Argon2id + AES-256-GCM + ChaCha20-Poly1305 + zstd)"
+build = "build.rs"
+
+# Встраивание иконки приложения в .exe (ярлык/проводник Windows).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[lib]
+name = "securevault"
+path = "src/lib.rs"
+
+[[bin]]
+name = "securevault"
+path = "src/main.rs"
+
+[dependencies]
+argon2 = "0.5"            # Argon2id — вывод мастер-ключа из пароля
+aes-gcm = "0.10"          # AES-256-GCM — первый слой шифрования
+chacha20poly1305 = "0.10" # ChaCha20-Poly1305 — второй слой
+zstd = "0.13"             # сжатие до шифрования
+zeroize = "1"             # затирание ключей в RAM (аналог sodium_memzero)
+getrandom = "0.2"         # криптостойкий CSPRNG для соли/nonce/ключей
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+anyhow = "1"
+chrono = "0.4"            # ISO-таймстемпы записей
+rpassword = "7"           # скрытый ввод пароля (без эха в консоли)
+eframe = "0.29"           # нативный GUI (egui) — окно приложения
+sha2 = "0.10"             # SHA-256 для контроля целостности файла
+hmac = "0.12"             # HMAC для TOTP (2FA)
+sha1 = "0.10"             # SHA-1 для TOTP (стандарт RFC 6238)
+qrcode = { version = "0.14", default-features = false }  # генерация QR для 2FA
+rfd = "0.14"             # нативный диалог выбора файла/папки (как «Сохранить как»)
+ureq = { version = "2", features = ["json"] }  # блокирующий HTTP-клиент для синхронизации с сервером (без tokio)
+
+# Хранение доверия устройства в OS Keychain:
+# Windows — Credential Manager, macOS — Keychain.
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+windows = { version = "0.58", features = ["Security_Credentials_UI", "Foundation"] }  # Windows Hello (биометрия)
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+# Прочее (вкл. Linux): без системного бэкенда — только для сборки/тестов.
+[target.'cfg(all(not(windows), not(target_os = "macos")))'.dependencies]
+keyring = { version = "3", default-features = false }
