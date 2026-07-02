@@ -1,21 +1,21 @@
-# Служебный скрипт очистки
+# Helper cleanup script
 strip_comments.py
 
 # Rust build artifacts
 /target
 
-# Установщик Inno Setup (кладём в GitHub Releases, не в репозиторий)
+# Inno Setup output (installer goes to GitHub Releases, not the repo)
 /Output
 
-# Личные данные пользователя (никогда не коммитить)
+# User data (never commit)
 *.svault
 *.svtoken
 config.json
 /data
 
-# Резервные копии редакторов
+# Editor backups
 *.rs.bk
 
-# ОС
+# OS
 Thumbs.db
 .DS_Store
