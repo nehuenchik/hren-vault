@@ -4,7 +4,7 @@
 ; Then open this file in Inno Setup Compiler and press Compile (or Build -> Compile).
 
 #define AppName "H.R.E.N. vault"
-#define AppVersion "0.1.0-beta"
+#define AppVersion "0.1.1-beta"
 #define AppExe "sv_gui.exe"
 
 [Setup]

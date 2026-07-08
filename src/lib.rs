@@ -914,6 +914,32 @@ impl Vault {
         Ok(())
     }
 
+    pub fn update_record(&mut self, id: &str, content: &str) -> Result<()> {
+        let mut obj = self.get_record(id)?;
+        match obj {
+            serde_json::Value::Object(ref mut m) => {
+                m.insert("content".into(), serde_json::Value::String(content.to_string()));
+            }
+            _ => return Err(anyhow!("некорректная запись: {id}")),
+        }
+        let plaintext = serde_json::to_vec(&obj)?;
+        let chunk_key = DualKey::random();
+        let blob = encrypt_blob(&plaintext, &chunk_key)?;
+        self.chunks.insert(id.to_string(), B64.encode(&blob));
+        let sealed = encrypt_blob(chunk_key.to_bytes().as_ref(), &self.vk)?;
+        let rec = self
+            .index
+            .records
+            .iter_mut()
+            .find(|r| r.id == id)
+            .ok_or_else(|| anyhow!("запись не найдена: {id}"))?;
+        rec.chunk_key_encrypted = B64.encode(&sealed);
+        rec.modified = chrono::Utc::now().to_rfc3339();
+        rec.size_bytes = plaintext.len();
+        self.save()?;
+        Ok(())
+    }
+
     pub fn search(&self, query: &str) -> Vec<&Record> {
         let q = query.to_lowercase();
         self.index

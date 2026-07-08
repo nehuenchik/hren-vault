@@ -66,6 +66,7 @@ fn t(lang: Lang, key: &str) -> String {
         "trust_days" => ("Trust timer (days)", "Таймер доверия (дни)"),
         "auto_lock" => ("Auto-lock (minutes, 0 = off)", "Авто-лок (минуты, 0 = выкл)"),
         "save" => ("Save", "Сохранить"),
+        "saved" => ("Saved", "Сохранено"),
         "devices" => ("Devices", "Устройства"),
         "switch_vault" => ("Switch vault", "Сменить хранилище"),
         "unlocked" => ("unlocked", "разблокировано"),
@@ -489,7 +490,6 @@ enum SettingsSection {
     Bio,
     Session,
     Account,
-    Sync,
 }
 
 #[derive(Default)]
@@ -508,6 +508,8 @@ struct App {
     reg_pass2: String,
     selected_content: String,
     selected_meta: String,
+    selected_id: Option<String>,
+    selected_orig: String,
     confirm_signout: bool,
     integrity_warn: bool,
     integrity_ack: bool,
@@ -561,8 +563,6 @@ struct App {
     splash_start: Option<std::time::Instant>,
     sess_ak: String,
     sess_totp: String,
-
-    sync_status: String,
 
     applied_scale: f32,
     sort_oldest: bool,
@@ -1224,8 +1224,10 @@ impl App {
         });
         match res {
             Some(Ok((content, meta))) => {
+                self.selected_orig = content.clone();
                 self.selected_content = content;
                 self.selected_meta = meta;
+                self.selected_id = Some(id.to_string());
             }
             Some(Err(e)) => self.error = format!("{e:#}"),
             None => {}
@@ -1240,13 +1242,6 @@ impl App {
                 if ui.button(self.tr("settings")).clicked() {
                     open_settings = true;
                 }
-                egui::Frame::none()
-                    .fill(Color32::from_rgb(24, 60, 34))
-                    .rounding(egui::Rounding::same(8.0))
-                    .inner_margin(egui::Margin::symmetric(10.0, 3.0))
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new(self.tr("unlocked")).size(12.0).color(pal().green));
-                    });
             });
         });
         ui.add_space(4.0);
@@ -1484,7 +1479,6 @@ impl App {
         let mut to_open: Option<(String, bool)> = None;
         let mut to_delete: Option<String> = None;
         let lbl_empty = self.tr("empty");
-        let lbl_note = self.tr("list_note");
         let lbl_secret_sub = self.tr("list_secret_sub");
         let lbl_open = self.tr("open");
         let lbl_delete = self.tr("delete");
@@ -1496,7 +1490,7 @@ impl App {
             if items.is_empty() {
                 ui.label(egui::RichText::new(lbl_empty.as_str()).color(pal().muted));
             }
-            for (id, rtype, title, hints, created) in &items {
+            for (id, rtype, title, _hints, created) in &items {
                 let secret = rtype != "note";
                 egui::Frame::none()
                     .fill(pal().card)
@@ -1509,12 +1503,12 @@ impl App {
                                 ui.add(egui::Label::new(egui::RichText::new(title).size(14.0).strong().color(title_col)).wrap_mode(egui::TextWrapMode::Truncate));
                                 let sub = if secret {
                                     lbl_secret_sub.clone()
-                                } else if hints.is_empty() {
-                                    lbl_note.clone()
                                 } else {
-                                    format!("{} · {}", lbl_note, hints.join(", "))
+                                    String::new()
                                 };
-                                ui.add(egui::Label::new(egui::RichText::new(sub).size(12.0).color(pal().muted)).wrap_mode(egui::TextWrapMode::Truncate));
+                                if !sub.is_empty() {
+                                    ui.add(egui::Label::new(egui::RichText::new(sub).size(12.0).color(pal().muted)).wrap_mode(egui::TextWrapMode::Truncate));
+                                }
                             });
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                 if ui.button(lbl_delete.as_str()).clicked() {
@@ -1665,6 +1659,7 @@ impl App {
 
         if !self.selected_content.is_empty() {
             let mut close = false;
+            let mut do_save = false;
             egui::Window::new(t(self.lang, "content"))
                 .collapsible(false)
                 .resizable(true)
@@ -1680,15 +1675,32 @@ impl App {
                         ui.add(egui::TextEdit::multiline(&mut self.selected_content).desired_width(f32::INFINITY));
                     });
                     ui.add_space(8.0);
+                    let changed = self.selected_content != self.selected_orig;
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button(t(self.lang, "close")).clicked() {
                             close = true;
                         }
+                        if ui.add_enabled(changed, egui::Button::new(t(self.lang, "save"))).clicked() {
+                            do_save = true;
+                        }
                     });
                 });
+            if do_save {
+                if let Some(id) = self.selected_id.clone() {
+                    let content = self.selected_content.clone();
+                    match self.vault.as_mut().map(|v| v.update_record(&id, &content)) {
+                        Some(Ok(())) => self.info = self.tr("saved"),
+                        Some(Err(e)) => self.error = format!("{e:#}"),
+                        None => {}
+                    }
+                }
+                close = true;
+            }
             if close {
                 self.selected_content.clear();
                 self.selected_meta.clear();
+                self.selected_orig.clear();
+                self.selected_id = None;
             }
         }
         }
@@ -2142,117 +2154,6 @@ impl App {
                 });
             });
         }
-
-                let title_sync = t(lang0, "sync");
-                if self.section(ui, SettingsSection::Sync, &title_sync) {
-                    ui.add_space(6.0);
-                    egui::Frame::none().fill(pal().card2).rounding(egui::Rounding::same(10.0)).inner_margin(egui::Margin::same(12.0)).show(ui, |ui| {
-                        if ui.small_button(t(lang0, "details")).clicked() {
-                            self.help_key = "help_sync";
-                        }
-
-                        let cloud_mode = self.config.sync_mode != "server";
-                        ui.horizontal(|ui| {
-                            if ui.selectable_label(cloud_mode, t(lang0, "sync_mode_cloud")).clicked() {
-                                self.config.sync_mode = "cloud".into();
-                                save_config(&self.config);
-                                self.sync_status.clear();
-                            }
-                            if ui.selectable_label(!cloud_mode, t(lang0, "sync_mode_server")).clicked() {
-                                self.config.sync_mode = "server".into();
-                                save_config(&self.config);
-                                self.sync_status.clear();
-                            }
-                        });
-                        ui.add_space(8.0);
-
-                        let mut do_upload = false;
-                        let mut do_download = false;
-                        let mut pick_folder = false;
-
-                        if cloud_mode {
-
-                            ui.label(egui::RichText::new(t(lang0, "sync_cloud_hint")).size(11.0).color(pal().muted));
-                            ui.add_space(4.0);
-                            ui.label(t(lang0, "sync_cloud_dir"));
-                            ui.horizontal(|ui| {
-                                let w = (ui.available_width() - 110.0).max(120.0);
-                                ui.add(egui::TextEdit::singleline(&mut self.config.sync_cloud_dir).desired_width(w));
-                                if ui.button(t(lang0, "sync_pick_folder")).clicked() { pick_folder = true; }
-                            });
-                            ui.add_space(6.0);
-                            ui.label(egui::RichText::new(t(lang0, "sync_download_warn")).size(11.0).color(pal().muted));
-                            ui.horizontal(|ui| {
-                                if ui.button(t(lang0, "sync_upload")).clicked() { do_upload = true; }
-                                if ui.button(t(lang0, "sync_download")).clicked() { do_download = true; }
-                            });
-                        } else {
-
-                            ui.add_space(10.0);
-                            ui.vertical_centered(|ui| {
-                                let (rect, _) = ui.allocate_exact_size(egui::vec2(64.0, 76.0), egui::Sense::hover());
-                                let p = ui.painter();
-                                let col = pal().muted;
-                                let cx = rect.center().x;
-                                let body_top = rect.top() + 30.0;
-
-                                let arc_c = egui::pos2(cx, body_top);
-                                let arc_r = 15.0;
-                                let mut pts = Vec::new();
-                                for i in 0..=20 {
-                                    let a = std::f32::consts::PI * (i as f32 / 20.0);
-                                    pts.push(egui::pos2(arc_c.x - arc_r * a.cos(), arc_c.y - arc_r * a.sin()));
-                                }
-                                p.add(egui::Shape::line(pts, egui::Stroke::new(6.0, col)));
-
-                                let body = egui::Rect::from_min_size(egui::pos2(cx - 26.0, body_top), egui::vec2(52.0, 42.0));
-                                p.rect_filled(body, 8.0, col);
-
-                                let kc = egui::pos2(cx, body.center().y - 3.0);
-                                p.circle_filled(kc, 5.0, pal().card2);
-                                p.rect_filled(egui::Rect::from_min_size(egui::pos2(cx - 2.0, kc.y), egui::vec2(4.0, 13.0)), 0.0, pal().card2);
-                            });
-                            ui.add_space(8.0);
-                            ui.vertical_centered(|ui| {
-                                ui.label(egui::RichText::new(t(lang0, "server_dev")).size(16.0).strong().color(pal().text));
-                            });
-                        }
-
-                        if pick_folder {
-                            if let Some(p) = rfd::FileDialog::new().pick_folder() {
-                                self.config.sync_cloud_dir = p.display().to_string();
-                                save_config(&self.config);
-                            }
-                        }
-
-                        if do_upload {
-                            let vp = self.vault_path.clone();
-                            let dir = self.config.sync_cloud_dir.clone();
-                            let res = securevault::sync::LocalDir::new(&dir)
-                                .and_then(|p| securevault::sync::upload_vault_file(&p, &vp));
-                            self.sync_status = match res {
-                                Ok(()) => t(lang0, "sync_uploaded"),
-                                Err(e) => format!("{e:#}"),
-                            };
-                        }
-
-                        if do_download {
-                            let vp = self.vault_path.clone();
-                            let dir = self.config.sync_cloud_dir.clone();
-                            let res = securevault::sync::LocalDir::new(&dir)
-                                .and_then(|p| securevault::sync::download_vault_file(&p, &vp));
-                            self.sync_status = match res {
-                                Ok(true) => t(lang0, "sync_downloaded"),
-                                Ok(false) => t(lang0, "sync_empty"),
-                                Err(e) => format!("{e:#}"),
-                            };
-                        }
-                        if !self.sync_status.is_empty() {
-                            ui.add_space(4.0);
-                            ui.label(egui::RichText::new(&self.sync_status).size(12.0).color(pal().muted));
-                        }
-                    });
-                }
 
         if self.confirm_delete {
             let needs_ak = self.ak_enabled();
